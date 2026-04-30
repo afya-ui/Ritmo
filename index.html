@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="theme-color" content="#f7f7f5" />
-<title>Rutinas v3 simple</title>
+<title>Rutinas por categoría</title>
 
 <style>
 :root{
@@ -105,6 +105,42 @@ h1{
   font-size:13px;
   color:var(--muted);
 }
+
+.view-filter{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:12px;
+  margin:0 0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.view-filter label{
+  font-size:14px;
+  color:var(--muted);
+  font-weight:700;
+}
+.view-filter select{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--text);
+  border-radius:999px;
+  padding:9px 12px;
+  font-size:14px;
+  font-weight:750;
+  outline:none;
+}
+.filter-note{
+  color:var(--muted);
+  font-size:13px;
+  margin:-6px 4px 10px;
+}
+.categories-container{
+  margin-top:4px;
+}
+
 .time-section{
   margin-top:14px;
 }
@@ -433,38 +469,18 @@ h1{
     </div>
   </div>
 
-  <section class="time-section" id="sec-manana">
-    <div class="time-header" onclick="toggleSection('manana')">
-      <div class="time-title-wrap">
-        <div class="caret" id="caret-manana">▸</div>
-        <div class="time-title">Mañana</div>
-      </div>
-      <div class="time-count" id="count-manana"></div>
-    </div>
-    <div class="time-body" id="manana"></div>
-  </section>
+  <div class="view-filter">
+    <label for="time-filter">Ver rutina</label>
+    <select id="time-filter" onchange="setTimeFilter(this.value)">
+      <option value="todo">Todo el día</option>
+      <option value="manana">Mañana</option>
+      <option value="tarde">Tarde</option>
+      <option value="noche">Noche</option>
+    </select>
+  </div>
 
-  <section class="time-section" id="sec-tarde">
-    <div class="time-header" onclick="toggleSection('tarde')">
-      <div class="time-title-wrap">
-        <div class="caret" id="caret-tarde">▸</div>
-        <div class="time-title">Tarde</div>
-      </div>
-      <div class="time-count" id="count-tarde"></div>
-    </div>
-    <div class="time-body" id="tarde"></div>
-  </section>
-
-  <section class="time-section" id="sec-noche">
-    <div class="time-header" onclick="toggleSection('noche')">
-      <div class="time-title-wrap">
-        <div class="caret" id="caret-noche">▸</div>
-        <div class="time-title">Noche</div>
-      </div>
-      <div class="time-count" id="count-noche"></div>
-    </div>
-    <div class="time-body" id="noche"></div>
-  </section>
+  <div class="filter-note" id="filter-note"></div>
+  <div class="categories-container" id="categories-container"></div>
 </div>
 
 <div class="modal" id="history-modal" onclick="cerrarModalSiFondo(event)">
@@ -527,7 +543,8 @@ const DAYS_ES = ["domingo","lunes","martes","miercoles","jueves","viernes","saba
 let planObj = {};
 let checksObj = {};
 let todayItems = [];
-let openSections = {};
+let selectedTiempo = localStorage.getItem("selectedTiempoV4") || "todo";
+let openSections = {}; // ya no se usa para mostrar secciones, se conserva por compatibilidad local
 let openCategories = {};
 
 function pad(n){ return String(n).padStart(2,"0"); }
@@ -549,19 +566,7 @@ function currentTimeSection(){
 }
 
 function initOpenSections(){
-  const saved = localStorage.getItem("openSectionsV3");
-  if(saved){
-    try{
-      openSections = JSON.parse(saved);
-    }catch(e){
-      openSections = { manana:false, tarde:false, noche:false };
-    }
-  }else{
-    openSections = { manana:false, tarde:false, noche:false };
-    openSections[currentTimeSection()] = true;
-  }
-
-  const savedCats = localStorage.getItem("openCategoriesV3");
+  const savedCats = localStorage.getItem("openCategoriesV4") || localStorage.getItem("openCategoriesV3");
   if(savedCats){
     try{
       openCategories = JSON.parse(savedCats);
@@ -569,6 +574,15 @@ function initOpenSections(){
       openCategories = {};
     }
   }
+
+  const filter = document.getElementById("time-filter");
+  if(filter) filter.value = selectedTiempo;
+}
+
+function setTimeFilter(value){
+  selectedTiempo = value || "todo";
+  localStorage.setItem("selectedTiempoV4", selectedTiempo);
+  render();
 }
 
 function saveOpenSections(){
@@ -576,7 +590,7 @@ function saveOpenSections(){
 }
 
 function saveOpenCategories(){
-  localStorage.setItem("openCategoriesV3", JSON.stringify(openCategories));
+  localStorage.setItem("openCategoriesV4", JSON.stringify(openCategories));
 }
 
 function toggleSection(t){
@@ -586,13 +600,8 @@ function toggleSection(t){
 }
 
 function applyOpenState(){
-  TIMES.forEach(t=>{
-    const sec = document.getElementById("sec-"+t);
-    const caret = document.getElementById("caret-"+t);
-    const isOpen = !!openSections[t];
-    sec.classList.toggle("open", isOpen);
-    caret.textContent = isOpen ? "▾" : "▸";
-  });
+  // En esta versión ya no mostramos Mañana/Tarde/Noche como bloques principales.
+  // La función queda por compatibilidad para no romper estados guardados anteriores.
 }
 
 function cleanId(s){
@@ -936,6 +945,10 @@ function renderItem(it){
   const doneItem = getCheck(it.categoria, it.tiempo, it.nombre);
   const badge = it.diasRestantes !== null ? `<span class="badge">faltan ${it.diasRestantes}d</span>` : "";
   const nota = it.note ? `${escapeHtml(it.note)}` : "";
+  const horario = `<strong>${TIME_LABEL[it.tiempo] || it.tiempo}</strong>`;
+  const metaParts = [horario];
+  if(nota) metaParts.push(nota);
+  const meta = metaParts.join(" · ");
   const icon = CAT_ICON[it.categoria] || "•";
 
   const div = document.createElement("div");
@@ -945,7 +958,7 @@ function renderItem(it){
       <div class="item-icon">${icon}</div>
       <div class="item-text">
         <div class="item-name">${escapeHtml(it.nombre)}</div>
-        <div class="item-meta">${nota}${badge}</div>
+        <div class="item-meta">${meta}${badge}</div>
       </div>
     </div>
     <button class="check" aria-label="Completar"
@@ -957,10 +970,12 @@ function renderItem(it){
 function render(){
   document.getElementById("date").textContent = localDateText();
 
-  TIMES.forEach(t=>{
-    document.getElementById(t).innerHTML = "";
-    document.getElementById("count-"+t).textContent = "";
-  });
+  const cont = document.getElementById("categories-container");
+  const filter = document.getElementById("time-filter");
+  const note = document.getElementById("filter-note");
+
+  if(filter) filter.value = selectedTiempo;
+  if(cont) cont.innerHTML = "";
 
   todayItems = flattenPlan();
 
@@ -973,68 +988,78 @@ function render(){
   document.getElementById("done-count").textContent = `${done}/${total} completados`;
   document.getElementById("pending-count").textContent = `${Math.max(0,total-done)} pendientes`;
 
-  TIMES.forEach(tiempo=>{
-    const items = todayItems.filter(it => it.tiempo === tiempo);
-    const cont = document.getElementById(tiempo);
-    const doneTime = items.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
-    document.getElementById("count-"+tiempo).textContent = items.length ? `${doneTime}/${items.length}` : "0/0";
+  const visibleItems = selectedTiempo === "todo"
+    ? todayItems
+    : todayItems.filter(it => it.tiempo === selectedTiempo);
 
-    if(!items.length){
-      cont.innerHTML = `<div class="empty">Nada programado para ${TIME_LABEL[tiempo].toLowerCase()}.</div>`;
-      return;
+  const visibleDone = visibleItems.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
+  if(note){
+    if(selectedTiempo === "todo"){
+      note.textContent = visibleItems.length
+        ? `Mostrando ${visibleDone}/${visibleItems.length} actividades de hoy por categoría.`
+        : "No hay actividades programadas para hoy.";
+    }else{
+      note.textContent = visibleItems.length
+        ? `Mostrando ${visibleDone}/${visibleItems.length} actividades de ${TIME_LABEL[selectedTiempo].toLowerCase()}.`
+        : `No hay actividades programadas para ${TIME_LABEL[selectedTiempo].toLowerCase()}.`;
     }
+  }
 
-    const grupos = groupByCategoria(items);
+  if(!visibleItems.length){
+    cont.innerHTML = `<div class="empty">Nada programado en esta vista.</div>`;
+    return;
+  }
 
-    grupos.forEach(grupo=>{
-      const wrapper = document.createElement("div");
-      wrapper.className = "category-group";
+  const grupos = groupByCategoria(visibleItems);
 
-      if(grupo.categoria !== "__sin_categoria__"){
-        const catId = cleanId(tiempo + "-" + grupo.categoria);
+  grupos.forEach(grupo=>{
+    const wrapper = document.createElement("div");
+    wrapper.className = "category-group";
 
-        if(openCategories[catId] === undefined){
-          openCategories[catId] = true;
-        }
+    if(grupo.categoria !== "__sin_categoria__"){
+      const catId = cleanId("vista-" + selectedTiempo + "-" + grupo.categoria);
 
-        const header = document.createElement("div");
-        header.className = "category-header";
-        header.innerHTML = `
-          <div class="category-title" onclick="toggleCategoria('${catId}')">
-            <span class="category-caret" id="cat-caret-${catId}">${openCategories[catId] ? "▾" : "▸"}</span>
-            <span class="category-icon">${getCategoriaIcon(grupo.categoria)}</span>
-            <span>${escapeHtml(getCategoriaLabel(grupo.categoria))}</span>
-          </div>
-          <div class="category-actions">
-            <span class="category-count">${grupo.items.length}</span>
-            <button class="category-summary-btn" onclick="abrirResumenCategoria('${escapeAttr(grupo.categoria)}')">Resumen</button>
-          </div>
-        `;
-        wrapper.appendChild(header);
-
-        const body = document.createElement("div");
-        body.className = "category-body";
-        body.id = "cat-body-" + catId;
-        body.style.display = openCategories[catId] ? "block" : "none";
-
-        grupo.items.forEach(it=>{
-          body.appendChild(renderItem(it));
-        });
-
-        wrapper.appendChild(body);
-      }else{
-        grupo.items.forEach(it=>{
-          wrapper.appendChild(renderItem(it));
-        });
+      if(openCategories[catId] === undefined){
+        openCategories[catId] = true;
       }
 
-      cont.appendChild(wrapper);
-    });
+      const doneCat = grupo.items.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
 
-    saveOpenCategories();
+      const header = document.createElement("div");
+      header.className = "category-header";
+      header.innerHTML = `
+        <div class="category-title" onclick="toggleCategoria('${catId}')">
+          <span class="category-caret" id="cat-caret-${catId}">${openCategories[catId] ? "▾" : "▸"}</span>
+          <span class="category-icon">${getCategoriaIcon(grupo.categoria)}</span>
+          <span>${escapeHtml(getCategoriaLabel(grupo.categoria))}</span>
+        </div>
+        <div class="category-actions">
+          <span class="category-count">${doneCat}/${grupo.items.length}</span>
+          <button class="category-summary-btn" onclick="abrirResumenCategoria('${escapeAttr(grupo.categoria)}')">Resumen</button>
+        </div>
+      `;
+      wrapper.appendChild(header);
+
+      const body = document.createElement("div");
+      body.className = "category-body";
+      body.id = "cat-body-" + catId;
+      body.style.display = openCategories[catId] ? "block" : "none";
+
+      grupo.items.forEach(it=>{
+        body.appendChild(renderItem(it));
+      });
+
+      wrapper.appendChild(body);
+    }else{
+      grupo.items.forEach(it=>{
+        wrapper.appendChild(renderItem(it));
+      });
+    }
+
+    cont.appendChild(wrapper);
   });
 
-  applyOpenState();
+  saveOpenCategories();
 }
 
 async function toggleCheck(categoria, tiempo, nombre){
@@ -1063,7 +1088,6 @@ async function toggleCheck(categoria, tiempo, nombre){
 }
 
 initOpenSections();
-applyOpenState();
 cargar();
 </script>
 </body>
