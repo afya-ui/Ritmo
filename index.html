@@ -83,7 +83,8 @@ h1{
 }
 .summary-pct{
   font-size:18px;
-  font-weight:700;
+  font-weight:800;
+  text-align:right;
 }
 .bar{
   height:8px;
@@ -107,39 +108,38 @@ h1{
 }
 
 .view-filter{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:12px;
-  margin:0 0 14px;
+  background:transparent;
+  border:0;
+  border-radius:0;
+  padding:0 2px;
+  margin:4px 0 18px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:10px;
 }
 .view-filter label{
-  font-size:14px;
-  color:var(--muted);
-  font-weight:700;
+  display:none;
 }
 .view-filter select{
+  width:100%;
   border:1px solid var(--border);
   background:#fff;
   color:var(--text);
   border-radius:999px;
-  padding:9px 12px;
-  font-size:14px;
-  font-weight:750;
+  padding:13px 16px;
+  font-size:17px;
+  font-weight:800;
   outline:none;
+  box-shadow:0 1px 0 rgba(0,0,0,.03);
 }
 .filter-note{
-  color:var(--muted);
-  font-size:13px;
-  margin:-6px 4px 10px;
+  display:none;
 }
 .categories-container{
   margin-top:4px;
 }
+
 
 .time-section{
   margin-top:14px;
@@ -183,58 +183,63 @@ h1{
   display:block;
 }
 .category-group{
-  margin-bottom:12px;
+  margin-bottom:14px;
 }
 .category-header{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px 14px;
   display:flex;
   align-items:center;
   justify-content:space-between;
-  gap:8px;
-  color:var(--muted);
-  font-size:13px;
-  font-weight:800;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-  padding:10px 6px 7px;
+  gap:12px;
+  color:var(--text);
   user-select:none;
+  cursor:pointer;
+  box-shadow:0 1px 0 rgba(0,0,0,.03);
 }
 .category-title{
   display:flex;
   align-items:center;
-  gap:8px;
-  cursor:pointer;
+  gap:12px;
   flex:1;
+  min-width:0;
+  font-size:17px;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.04em;
 }
 .category-caret{
   color:var(--muted);
-  font-size:14px;
-  width:14px;
+  font-size:22px;
+  width:18px;
+  text-align:center;
 }
 .category-icon{
-  font-size:16px;
+  font-size:21px;
+  width:26px;
+  text-align:center;
 }
 .category-actions{
   display:flex;
   align-items:center;
-  gap:8px;
+  gap:10px;
 }
 .category-count{
-  font-size:12px;
-  color:var(--muted);
+  font-size:17px;
+  color:var(--text);
+  font-weight:850;
+  white-space:nowrap;
 }
 .category-summary-btn{
-  border:1px solid var(--border);
-  background:#fff;
-  color:var(--text);
-  border-radius:999px;
-  padding:5px 9px;
-  font-size:11px;
-  font-weight:700;
-  cursor:pointer;
+  display:none;
 }
 .category-body{
   display:block;
+  margin-top:10px;
 }
+
 .item{
   background:var(--card);
   border:1px solid var(--border);
@@ -619,7 +624,7 @@ function toggleCategoria(id){
   const caret = document.getElementById("cat-caret-" + id);
 
   if(body) body.style.display = openCategories[id] ? "block" : "none";
-  if(caret) caret.textContent = openCategories[id] ? "▾" : "▸";
+  if(caret) caret.textContent = openCategories[id] ? "⌄" : "›";
 }
 
 function localDateText(){
@@ -967,6 +972,14 @@ function renderItem(it){
   return div;
 }
 
+function getProgressMood(pct){
+  if(pct >= 90) return "Listo";
+  if(pct >= 70) return "Casi listo";
+  if(pct >= 30) return "Buen ritmo";
+  if(pct > 0) return "Arrancando";
+  return "Por empezar";
+}
+
 function render(){
   document.getElementById("date").textContent = localDateText();
 
@@ -983,7 +996,7 @@ function render(){
   let done = todayItems.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
   let pct = total ? Math.round(done / total * 100) : 0;
 
-  document.getElementById("pct").textContent = pct + "%";
+  document.getElementById("pct").textContent = pct + "% · " + getProgressMood(pct);
   document.getElementById("fill").style.width = pct + "%";
   document.getElementById("done-count").textContent = `${done}/${total} completados`;
   document.getElementById("pending-count").textContent = `${Math.max(0,total-done)} pendientes`;
@@ -1027,15 +1040,15 @@ function render(){
 
       const header = document.createElement("div");
       header.className = "category-header";
+      header.onclick = () => toggleCategoria(catId);
       header.innerHTML = `
-        <div class="category-title" onclick="toggleCategoria('${catId}')">
-          <span class="category-caret" id="cat-caret-${catId}">${openCategories[catId] ? "▾" : "▸"}</span>
+        <div class="category-title">
+          <span class="category-caret" id="cat-caret-${catId}">${openCategories[catId] ? "⌄" : "›"}</span>
           <span class="category-icon">${getCategoriaIcon(grupo.categoria)}</span>
           <span>${escapeHtml(getCategoriaLabel(grupo.categoria))}</span>
         </div>
         <div class="category-actions">
           <span class="category-count">${doneCat}/${grupo.items.length}</span>
-          <button class="category-summary-btn" onclick="abrirResumenCategoria('${escapeAttr(grupo.categoria)}')">Resumen</button>
         </div>
       `;
       wrapper.appendChild(header);
