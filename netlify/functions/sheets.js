@@ -187,6 +187,26 @@ exports.handler = async (event) => {
       };
     }
 
+    if (action === "getUsageCounts") {
+      const rows = await readSheet(sheets, "checks!A2:E");
+      const usageCounts = {};
+
+      for (const row of rows) {
+        const [fecha, categoria, tiempo, nombre, completado] = row;
+        if (!fecha || !categoria || !tiempo || !nombre) continue;
+        if (completado !== "true") continue;
+
+        const key = `${categoria}||${tiempo}||${nombre}`;
+        usageCounts[key] = (usageCounts[key] || 0) + 1;
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ usageCounts }),
+      };
+    }
+
     if (action === "getHistorial") {
       const { categoria, tiempo, nombre } = data || {};
       const rows = await readSheet(sheets, "checks!A2:E");
