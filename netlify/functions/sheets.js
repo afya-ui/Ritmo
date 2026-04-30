@@ -452,6 +452,18 @@ function buildRitmoReport(planRows, checkRows, periodo) {
   const mejorHorario = horarios.length ? horarios[0].label : "";
   const horarioDebil = horarios.length ? horarios[horarios.length - 1].label : "";
 
+  const peorProducto = productos
+    .filter(p => Number(p.esperados || 0) > 0)
+    .map(p => ({
+      ...p,
+      fallas: Math.max(0, Number(p.esperados || 0) - Number(p.usados || 0)),
+    }))
+    .filter(p => p.fallas > 0)
+    .sort((a, b) => {
+      if (b.fallas !== a.fallas) return b.fallas - a.fallas;
+      return (a.pct || 0) - (b.pct || 0);
+    })[0] || null;
+
   return {
     periodo: periodo || "mes",
     periodoLabel: label,
@@ -465,6 +477,7 @@ function buildRitmoReport(planRows, checkRows, periodo) {
     debil,
     mejorHorario,
     horarioDebil,
+    peorProducto,
     insight: buildInsight(pct, fuerte, debil, horarioDebil),
     categorias,
     horarios,
