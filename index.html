@@ -38,6 +38,23 @@ body{
   gap:12px;
   margin-bottom:14px;
 }
+.top-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+.top-actions select{
+  border:1px solid var(--border);
+  background:#fff;
+  color:var(--text);
+  border-radius:999px;
+  padding:8px 10px;
+  font-size:13px;
+  font-weight:750;
+  outline:none;
+  max-width:118px;
+}
 h1{
   font-size:34px;
   line-height:1;
@@ -108,17 +125,8 @@ h1{
 }
 
 .view-filter{
-  background:transparent;
-  border:0;
-  border-radius:0;
-  padding:0 2px;
-  margin:4px 0 18px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.view-filter label{
+  display:none;
+}.view-filter label{
   display:none;
 }
 .view-filter select{
@@ -457,7 +465,15 @@ h1{
       <div class="date" id="date"></div>
       <div class="status"><span class="dot" id="status-dot"></span><span id="status">Cargando...</span></div>
     </div>
-    <button class="small-btn" onclick="cargar()">Actualizar</button>
+    <div class="top-actions">
+      <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina">
+        <option value="todo">Todo</option>
+        <option value="manana">Mañana</option>
+        <option value="tarde">Tarde</option>
+        <option value="noche">Noche</option>
+      </select>
+      <button class="small-btn" onclick="cargar()">Actualizar</button>
+    </div>
   </div>
 
   <div class="error-box" id="error-box"></div>
@@ -474,15 +490,6 @@ h1{
     </div>
   </div>
 
-  <div class="view-filter">
-    <label for="time-filter">Ver rutina</label>
-    <select id="time-filter" onchange="setTimeFilter(this.value)">
-      <option value="todo">Todo el día</option>
-      <option value="manana">Mañana</option>
-      <option value="tarde">Tarde</option>
-      <option value="noche">Noche</option>
-    </select>
-  </div>
 
   <div class="filter-note" id="filter-note"></div>
   <div class="categories-container" id="categories-container"></div>
@@ -506,6 +513,12 @@ h1{
 const API = "/.netlify/functions/sheets";
 const TIMES = ["manana","tarde","noche"];
 const TIME_LABEL = { manana:"Mañana", tarde:"Tarde", noche:"Noche" };
+
+const WELLNESS_ITEMS = [
+  { nombre:"Meditación", note:"" },
+  { nombre:"Sauna", note:"" },
+  { nombre:"Hielos", note:"" }
+];
 
 const CAT_LABEL = {
   dermato:"Derma",
@@ -744,6 +757,19 @@ function flattenPlan(){
     });
   });
 
+  TIMES.forEach(tiempo=>{
+    WELLNESS_ITEMS.forEach(w=>{
+      out.push({
+        categoria:"wellness",
+        tiempo,
+        nombre:w.nombre,
+        note:w.note || "",
+        diasRestantes:null,
+        diasCicloTotal:null
+      });
+    });
+  });
+
   out.sort((a,b)=>{
     const catDiff = (CAT_ORDER[a.categoria] || 99) - (CAT_ORDER[b.categoria] || 99);
     if(catDiff !== 0) return catDiff;
@@ -757,7 +783,6 @@ function getCheck(categoria, tiempo, nombre){
   return !!(checksObj &&
     checksObj[categoria] &&
     checksObj[categoria][tiempo] &&
-    checksObj[categoria][tiempo][nombre]);
 }
 
 function escapeAttr(s){
