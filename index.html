@@ -961,7 +961,7 @@ async function abrirHistorial(categoria, tiempo, nombre){
     const historial = construirHistorialCompleto(itemActual, historialServidor);
     const usados = historial.filter(h=>h.completado).length;
     const duracionTotal = itemActual && itemActual.diasCicloTotal ? Number(itemActual.diasCicloTotal) : historial.length;
-    const pendientes = itemActual && itemActual.diasCicloTotal ? calcularDiasRestantesItem(itemActual) : 0;
+    const pendientes = duracionTotal ? Math.max(0, duracionTotal - usados) : 0;
     const pct = duracionTotal ? Math.round(usados / duracionTotal * 100) : 0;
 
     let html = `
@@ -972,7 +972,7 @@ async function abrirHistorial(categoria, tiempo, nombre){
         </div>
         <div class="stat-card">
           <div class="stat-value">${pendientes}</div>
-          <div class="stat-label">Días restantes</div>
+          <div class="stat-label">Pendientes</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${pct}%</div>
@@ -1014,7 +1014,7 @@ async function abrirResumenCategoria(categoria){
 
     let totalEsperado = 0;
     let totalHecho = 0;
-    let totalRestantes = 0;
+    let totalPendientes = 0;
     let productosHtml = "";
 
     for(const it of itemsCategoria){
@@ -1028,12 +1028,12 @@ async function abrirResumenCategoria(categoria){
       const historial = construirHistorialCompleto(it, historialServidor);
       const usados = historial.filter(h=>h.completado).length;
       const esperado = it.diasCicloTotal ? Number(it.diasCicloTotal) : historial.length;
-      const pendientes = it.diasCicloTotal ? calcularDiasRestantesItem(it) : 0;
+      const pendientes = esperado ? Math.max(0, esperado - usados) : 0;
       const pct = esperado ? Math.round(usados / esperado * 100) : 0;
 
       totalEsperado += esperado;
       totalHecho += usados;
-      totalRestantes += pendientes;
+      totalPendientes += pendientes;
 
       productosHtml += `
         <div class="product-summary-row">
@@ -1042,13 +1042,13 @@ async function abrirResumenCategoria(categoria){
             <span>${pct}%</span>
           </div>
           <div class="product-summary-meta">
-            ${usados}/${esperado} completados · ${pendientes} días restantes · ${TIME_LABEL[it.tiempo]}
+            ${usados}/${esperado} completados · ${pendientes} pendientes · ${TIME_LABEL[it.tiempo]}
           </div>
         </div>
       `;
     }
 
-    const totalPendiente = totalRestantes;
+    const totalPendiente = totalPendientes;
     const pctGeneral = totalEsperado ? Math.round(totalHecho / totalEsperado * 100) : 0;
 
     const html = `
@@ -1059,7 +1059,7 @@ async function abrirResumenCategoria(categoria){
         </div>
         <div class="stat-card">
           <div class="stat-value">${totalPendiente}</div>
-          <div class="stat-label">Días restantes</div>
+          <div class="stat-label">Pendientes</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${pctGeneral}%</div>
