@@ -571,10 +571,10 @@ function currentTimeSection(){
 }
 
 function initOpenSections(){
-  
-    openCategories = {};
-    }
-  }
+  // Siempre iniciar categorías colapsadas
+  openCategories = {};
+  localStorage.removeItem("openCategoriesV4");
+  localStorage.removeItem("openCategoriesV3");
 
   const filter = document.getElementById("time-filter");
   if(filter) filter.value = selectedTiempo;
@@ -1029,7 +1029,7 @@ function render(){
       const catId = cleanId("vista-" + selectedTiempo + "-" + grupo.categoria);
 
       if(openCategories[catId] === undefined){
-        openCategories[catId] = true;
+        openCategories[catId] = false;
       }
 
       const doneCat = grupo.items.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
