@@ -834,11 +834,39 @@ function addDaysKey(fechaKey, dias){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 }
 
+function normalizarFechaKey(valor){
+  if(!valor) return "";
+  const s = String(valor).trim();
+
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if(m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+
+  m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m) return `${m[3]}-${pad(m[2])}-${pad(m[1])}`;
+
+  const d = new Date(s);
+  if(!isNaN(d.getTime())) return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  return s;
+}
+
+function esCompletado(valor){
+  if(valor === true || valor === 1) return true;
+  const s = String(valor ?? "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .trim()
+    .toLowerCase();
+  return ["true","si","yes","1","x","ok","aplicado","completado","done"].includes(s);
+}
+
 function normalizarHistorial(historial){
   const mapa = {};
   (historial || []).forEach(h=>{
-    if(!h || !h.fecha) return;
-    mapa[h.fecha] = !!h.completado;
+    if(!h) return;
+    const fecha = normalizarFechaKey(h.fecha || h.Fecha || h.date || h.Date);
+    if(!fecha) return;
+    const valor = h.completado ?? h.Completado ?? h.aplicado ?? h.Aplicado ?? h.status ?? h.Status ?? h.estado ?? h.Estado;
+    mapa[fecha] = esCompletado(valor);
   });
   return mapa;
 }
@@ -858,8 +886,10 @@ function construirHistorialCompleto(itemActual, historialServidor){
     }
 
     (historialServidor || []).forEach(h=>{
-      if(h && h.fecha && !filas.some(x=>x.fecha === h.fecha)){
-        filas.push({ fecha:h.fecha, completado:!!h.completado });
+      const fechaExtra = h ? normalizarFechaKey(h.fecha || h.Fecha || h.date || h.Date) : "";
+      if(fechaExtra && !filas.some(x=>x.fecha === fechaExtra)){
+        const valor = h.completado ?? h.Completado ?? h.aplicado ?? h.Aplicado ?? h.status ?? h.Status ?? h.estado ?? h.Estado;
+        filas.push({ fecha:fechaExtra, completado:esCompletado(valor) });
       }
     });
 
