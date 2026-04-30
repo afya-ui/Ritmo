@@ -560,6 +560,7 @@ const DAYS_ES = ["domingo","lunes","martes","miercoles","jueves","viernes","saba
 
 let planObj = {};
 let checksObj = {};
+let usageCountsObj = {};
 let todayItems = [];
 let selectedTiempo = localStorage.getItem("selectedTiempoV4") || "todo";
 let openSections = {}; // ya no se usa para mostrar secciones, se conserva por compatibilidad local
@@ -689,13 +690,15 @@ async function cargar(){
 
     const fecha = todayKey();
 
-    const [planRes, checksRes] = await Promise.all([
+    const [planRes, checksRes, usageRes] = await Promise.all([
       postSheets("getPlan"),
-      postSheets("getChecks", { fecha })
+      postSheets("getChecks", { fecha }),
+      postSheets("getUsageCounts")
     ]);
 
     planObj = planRes.plan || {};
     checksObj = checksRes.checks || {};
+    usageCountsObj = usageRes.usageCounts || {};
 
     setStatus("Sincronizado", "ok");
     render();
@@ -707,21 +710,21 @@ async function cargar(){
   }
 }
 
-function getDiasRestantes(cfg){
-  // Días futuros que faltan después de hoy.
-  // Ejemplo: tratamiento 20 días que inició el 11/04, el 25/04 faltan 5 días: 26,27,28,29,30.
-  if(!cfg || !cfg.inicio || !cfg.diasCiclo) return null;
-  const inicio = new Date(cfg.inicio + "T12:00:00");
-  const hoy = new Date(todayKey() + "T12:00:00");
-  const total = Number(cfg.diasCiclo);
-  if(!total) return null;
-
-  const fin = new Date(inicio);
-  fin.setDate(fin.getDate() + total - 1);
-
-  const restantes = Math.round((fin - hoy) / 86400000);
-  return Math.max(0, restantes);
+function usageKey(categoria, tiempo, nombre){
+  return `${categoria}||${tiempo}||${nombre}`;
 }
+
+function getUsoRegistrado(categoria, tiempo, nombre){
+  return Number(usageCountsObj[usageKey(categoria, tiempo, nombre)] || 0);
+}
+
+function getPendientesPorRegistro(categoria, tiempo, nombre, duracion){
+  const total = Number(duracion || 0);
+  if(!total) return null;
+  const usados = getUsoRegistrado(categoria, tiempo, nombre);
+  return Math.max(0, total - usados);
+}
+
 
 function cicloActivoHoy(cfg){
   if(!cfg || !cfg.inicio || !cfg.diasCiclo) return true;
@@ -749,7 +752,8 @@ function isActiveCfg(cfg){
 
   if(cfg.inicio){
     if(cfg.inicio > todayKey()) return false;
-    if(cfg.diasCiclo && !cicloActivoHoy(cfg)) return false;
+    // No cerramos el tratamiento por calendario.
+    // Se mantiene visible hasta completar la duración con registros reales de uso.
   }
 
   return true;
@@ -761,14 +765,21 @@ function flattenPlan(){
     TIMES.forEach(tiempo=>{
       Object.entries((times && times[tiempo]) || {}).forEach(([nombre, cfg])=>{
         if(isActiveCfg(cfg)){
+          const duracion = cfg.diasCiclo ? Number(cfg.diasCiclo) : null;
+          const usados = duracion ? getUsoRegistrado(categoria, tiempo, nombre) : 0;
+
+          // Si ya registraste todos los usos necesarios, deja de aparecer
+          // para evitar tomar/aplicar producto de más.
+          if(duracion && usados >= duracion) return;
+
           out.push({
             categoria,
             tiempo,
             nombre,
             note: cfg.note || cfg.nota || "",
             inicio: cfg.inicio || "",
-            diasRestantes: cfg.diasCiclo ? getDiasRestantes(cfg) : null,
-            diasCicloTotal: cfg.diasCiclo || null
+            diasRestantes: duracion ? Math.max(0, duracion - usados) : null,
+            diasCicloTotal: duracion
           });
         }
       });
@@ -942,6 +953,17 @@ function cerrarModalSiFondo(event){
   }
 }
 
+function obtenerHistorialUso(historialServidor){
+  return (historialServidor || [])
+    .map(h => {
+      const fecha = normalizarFechaKey(h.fecha || h.Fecha || h.date || h.Date);
+      const valor = h.completado ?? h.Completado ?? h.aplicado ?? h.Aplicado ?? h.status ?? h.Status ?? h.estado ?? h.Estado;
+      return { fecha, completado: esCompletado(valor) };
+    })
+    .filter(h => h.fecha && h.completado)
+    .sort((a,b)=> b.fecha.localeCompare(a.fecha));
+}
+
 async function abrirHistorial(categoria, tiempo, nombre){
   try{
     document.getElementById("modal-title").textContent = nombre;
@@ -958,9 +980,9 @@ async function abrirHistorial(categoria, tiempo, nombre){
       it.nombre === nombre
     );
 
-    const historial = construirHistorialCompleto(itemActual, historialServidor);
-    const usados = historial.filter(h=>h.completado).length;
-    const duracionTotal = itemActual && itemActual.diasCicloTotal ? Number(itemActual.diasCicloTotal) : historial.length;
+    const historialUso = obtenerHistorialUso(historialServidor);
+    const usados = historialUso.length;
+    const duracionTotal = itemActual && itemActual.diasCicloTotal ? Number(itemActual.diasCicloTotal) : usados;
     const pendientes = duracionTotal ? Math.max(0, duracionTotal - usados) : 0;
     const pct = duracionTotal ? Math.round(usados / duracionTotal * 100) : 0;
 
@@ -981,14 +1003,14 @@ async function abrirHistorial(categoria, tiempo, nombre){
       </div>
     `;
 
-    if(!historial.length){
-      html += `<div class="history-empty">Todavía no hay historial para este producto.</div>`;
+    if(!historialUso.length){
+      html += `<div class="history-empty">Todavía no hay registros de uso para este producto.</div>`;
     }else{
-      historial.forEach(h=>{
+      historialUso.forEach(h=>{
         html += `
           <div class="history-row">
             <span>${formatFecha(h.fecha)}</span>
-            <strong>${h.completado ? "✅ Aplicado" : "❌ No aplicado"}</strong>
+            <strong>✅ Aplicado</strong>
           </div>
         `;
       });
@@ -1025,9 +1047,9 @@ async function abrirResumenCategoria(categoria){
       });
 
       const historialServidor = res.historial || [];
-      const historial = construirHistorialCompleto(it, historialServidor);
-      const usados = historial.filter(h=>h.completado).length;
-      const esperado = it.diasCicloTotal ? Number(it.diasCicloTotal) : historial.length;
+      const historialUso = obtenerHistorialUso(historialServidor);
+      const usados = historialUso.length;
+      const esperado = it.diasCicloTotal ? Number(it.diasCicloTotal) : usados;
       const pendientes = esperado ? Math.max(0, esperado - usados) : 0;
       const pct = esperado ? Math.round(usados / esperado * 100) : 0;
 
@@ -1224,8 +1246,12 @@ async function toggleCheck(categoria, tiempo, nombre){
     });
 
     // Releer checks después de guardar para confirmar que quedó sincronizado
-    const checksRes = await postSheets("getChecks", { fecha: todayKey() });
+    const [checksRes, usageRes] = await Promise.all([
+      postSheets("getChecks", { fecha: todayKey() }),
+      postSheets("getUsageCounts")
+    ]);
     checksObj = checksRes.checks || checksObj;
+    usageCountsObj = usageRes.usageCounts || usageCountsObj;
     setStatus("Sincronizado", "ok");
     render();
   }catch(e){
