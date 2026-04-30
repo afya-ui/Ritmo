@@ -55,6 +55,39 @@ body{
   outline:none;
   max-width:118px;
 }
+
+.view-mode{
+  display:flex;
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:3px;
+  gap:3px;
+}
+.view-mode button{
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+.view-mode button.active{
+  background:var(--text);
+  color:#fff;
+}
+.item-status{
+  display:inline-block;
+  margin-left:4px;
+  padding:2px 7px;
+  border-radius:999px;
+  background:rgba(0,0,0,.06);
+  color:var(--muted);
+  font-size:11px;
+  vertical-align:1px;
+}
 h1{
   font-size:34px;
   line-height:1;
@@ -466,6 +499,10 @@ h1{
       <div class="status"><span class="dot" id="status-dot"></span><span id="status">Cargando...</span></div>
     </div>
     <div class="top-actions">
+      <div class="view-mode" aria-label="Modo de vista">
+        <button id="btn-hoy" type="button" onclick="setViewMode('hoy')">Hoy</button>
+        <button id="btn-historico" type="button" onclick="setViewMode('historico')">Histórico</button>
+      </div>
       <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina">
         <option value="todo">Todo</option>
         <option value="manana">Mañana</option>
@@ -562,6 +599,7 @@ let planObj = {};
 let checksObj = {};
 let usageCountsObj = {};
 let todayItems = [];
+let viewMode = localStorage.getItem("viewModeV1") || "hoy";
 let selectedTiempo = localStorage.getItem("selectedTiempoV4") || "todo";
 let openSections = {}; // ya no se usa para mostrar secciones, se conserva por compatibilidad local
 let openCategories = {};
@@ -592,12 +630,27 @@ function initOpenSections(){
 
   const filter = document.getElementById("time-filter");
   if(filter) filter.value = selectedTiempo;
+  syncViewModeUI();
 }
 
 function setTimeFilter(value){
   selectedTiempo = value || "todo";
   localStorage.setItem("selectedTiempoV4", selectedTiempo);
   render();
+}
+
+function setViewMode(value){
+  viewMode = value === "historico" ? "historico" : "hoy";
+  localStorage.setItem("viewModeV1", viewMode);
+  syncViewModeUI();
+  render();
+}
+
+function syncViewModeUI(){
+  const hoy = document.getElementById("btn-hoy");
+  const hist = document.getElementById("btn-historico");
+  if(hoy) hoy.classList.toggle("active", viewMode === "hoy");
+  if(hist) hist.classList.toggle("active", viewMode === "historico");
 }
 
 function saveOpenSections(){
@@ -710,8 +763,15 @@ async function cargar(){
   }
 }
 
+function normalizeKey(v){
+  return String(v || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+}
+
 function usageKey(categoria, tiempo, nombre){
-  return `${categoria}||${tiempo}||${nombre}`;
+  return `${normalizeKey(categoria)}||${normalizeKey(tiempo)}||${normalizeKey(nombre)}`;
 }
 
 function getUsoRegistrado(categoria, tiempo, nombre){
@@ -809,11 +869,79 @@ function flattenPlan(){
   return out;
 }
 
+function flattenPlanHistorico(){
+  const out = [];
+
+  Object.entries(planObj || {}).forEach(([categoria, times])=>{
+    TIMES.forEach(tiempo=>{
+      Object.entries((times && times[tiempo]) || {}).forEach(([nombre, cfg])=>{
+        const duracion = cfg.diasCiclo ? Number(cfg.diasCiclo) : null;
+        const usados = duracion ? getUsoRegistrado(categoria, tiempo, nombre) : 0;
+        const pct = duracion ? Math.round((usados / duracion) * 100) : null;
+
+        out.push({
+          categoria,
+          tiempo,
+          nombre,
+          note: cfg.note || cfg.nota || "",
+          inicio: cfg.inicio || "",
+          diasRestantes: duracion ? Math.max(0, duracion - usados) : null,
+          diasCicloTotal: duracion,
+          usadosRegistrados: usados,
+          cumplimientoPct: pct,
+          historico: true
+        });
+      });
+    });
+  });
+
+  TIMES.forEach(tiempo=>{
+    WELLNESS_ITEMS.forEach(w=>{
+      const usados = getUsoRegistrado("wellness", tiempo, w.nombre);
+      out.push({
+        categoria:"wellness",
+        tiempo,
+        nombre:w.nombre,
+        note:w.note || "",
+        inicio:"",
+        diasRestantes:null,
+        diasCicloTotal:null,
+        usadosRegistrados:usados,
+        cumplimientoPct:null,
+        historico:true
+      });
+    });
+  });
+
+  out.sort((a,b)=>{
+    const catDiff = (CAT_ORDER[a.categoria] || 99) - (CAT_ORDER[b.categoria] || 99);
+    if(catDiff !== 0) return catDiff;
+    const nameDiff = a.nombre.localeCompare(b.nombre);
+    if(nameDiff !== 0) return nameDiff;
+    return TIMES.indexOf(a.tiempo) - TIMES.indexOf(b.tiempo);
+  });
+
+  return out;
+}
+
 function getCheck(categoria, tiempo, nombre){
-  return !!(checksObj &&
-    checksObj[categoria] &&
-    checksObj[categoria][tiempo] &&
-    checksObj[categoria][tiempo][nombre]);
+  if(!checksObj) return false;
+
+  if(checksObj[categoria] && checksObj[categoria][tiempo] && checksObj[categoria][tiempo][nombre]){
+    return true;
+  }
+
+  const catKey = normalizeKey(categoria);
+  const timeKey = normalizeKey(tiempo);
+  const nameKey = normalizeKey(nombre);
+
+  return Object.entries(checksObj).some(([cat, times])=>
+    normalizeKey(cat) === catKey &&
+    Object.entries(times || {}).some(([time, names])=>
+      normalizeKey(time) === timeKey &&
+      Object.entries(names || {}).some(([name, value])=> normalizeKey(name) === nameKey && !!value)
+    )
+  );
 }
 
 function escapeAttr(s){
@@ -1102,26 +1230,31 @@ async function abrirResumenCategoria(categoria){
 
 function renderItem(it){
   const doneItem = getCheck(it.categoria, it.tiempo, it.nombre);
+  const esHistorico = viewMode === "historico" || it.historico;
   const badge = it.diasRestantes !== null ? `<span class="badge">faltan ${it.diasRestantes}d</span>` : "";
+  const status = esHistorico && it.diasCicloTotal
+    ? `<span class="item-status">${it.usadosRegistrados || 0}/${it.diasCicloTotal} · ${it.cumplimientoPct || 0}%</span>`
+    : "";
   const nota = it.note ? `${escapeHtml(it.note)}` : "";
   const horario = `<strong>${TIME_LABEL[it.tiempo] || it.tiempo}</strong>`;
   const metaParts = [horario];
+  if(it.inicio) metaParts.push(`Inicio ${formatFecha(it.inicio)}`);
   if(nota) metaParts.push(nota);
   const meta = metaParts.join(" · ");
   const icon = CAT_ICON[it.categoria] || "•";
 
   const div = document.createElement("div");
-  div.className = "item" + (doneItem ? " done" : "");
+  div.className = "item" + (doneItem && !esHistorico ? " done" : "");
   div.innerHTML = `
     <div class="item-left" onclick="abrirHistorial('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">
       <div class="item-icon">${icon}</div>
       <div class="item-text">
         <div class="item-name">${escapeHtml(it.nombre)}</div>
-        <div class="item-meta">${meta}${badge}</div>
+        <div class="item-meta">${meta}${badge}${status}</div>
       </div>
     </div>
-    <button class="check" aria-label="Completar"
-      onclick="event.stopPropagation(); toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>
+    ${esHistorico ? "" : `<button class="check" aria-label="Completar"
+      onclick="event.stopPropagation(); toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>`}
   `;
   return div;
 }
@@ -1135,7 +1268,8 @@ function getProgressMood(pct){
 }
 
 function render(){
-  document.getElementById("date").textContent = localDateText();
+  document.getElementById("date").textContent = viewMode === "historico" ? "Histórico de uso" : localDateText();
+  syncViewModeUI();
 
   const cont = document.getElementById("categories-container");
   const filter = document.getElementById("time-filter");
@@ -1144,24 +1278,38 @@ function render(){
   if(filter) filter.value = selectedTiempo;
   if(cont) cont.innerHTML = "";
 
-  todayItems = flattenPlan();
-
-  let total = todayItems.length;
-  let done = todayItems.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
-  let pct = total ? Math.round(done / total * 100) : 0;
-
-  document.getElementById("pct").textContent = pct + "% · " + getProgressMood(pct);
-  document.getElementById("fill").style.width = pct + "%";
-  document.getElementById("done-count").textContent = `${done}/${total} completados`;
-  document.getElementById("pending-count").textContent = `${Math.max(0,total-done)} pendientes`;
+  todayItems = viewMode === "historico" ? flattenPlanHistorico() : flattenPlan();
 
   const visibleItems = selectedTiempo === "todo"
     ? todayItems
     : todayItems.filter(it => it.tiempo === selectedTiempo);
 
+  if(viewMode === "historico"){
+    const esperados = visibleItems.reduce((sum,it)=> sum + Number(it.diasCicloTotal || 0), 0);
+    const usados = visibleItems.reduce((sum,it)=> sum + Number(it.usadosRegistrados || 0), 0);
+    const pendientes = Math.max(0, esperados - usados);
+    const pct = esperados ? Math.round(usados / esperados * 100) : 0;
+    document.getElementById("pct").textContent = esperados ? pct + "% · Histórico" : "Histórico";
+    document.getElementById("fill").style.width = esperados ? pct + "%" : "0%";
+    document.getElementById("done-count").textContent = esperados ? `${usados}/${esperados} usos registrados` : `${visibleItems.length} items`;
+    document.getElementById("pending-count").textContent = esperados ? `${pendientes} pendientes/fallados` : "sin duración";
+  }else{
+    const total = visibleItems.length;
+    const done = visibleItems.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
+    const pct = total ? Math.round(done / total * 100) : 0;
+    document.getElementById("pct").textContent = pct + "% · " + getProgressMood(pct);
+    document.getElementById("fill").style.width = pct + "%";
+    document.getElementById("done-count").textContent = `${done}/${total} completados`;
+    document.getElementById("pending-count").textContent = `${Math.max(0,total-done)} pendientes`;
+  }
+
   const visibleDone = visibleItems.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
   if(note){
-    if(selectedTiempo === "todo"){
+    if(viewMode === "historico"){
+      note.textContent = visibleItems.length
+        ? `Mostrando histórico de ${visibleItems.length} items. Toca cualquier item para ver sus registros.`
+        : "No hay historial disponible en esta vista.";
+    }else if(selectedTiempo === "todo"){
       note.textContent = visibleItems.length
         ? `Mostrando ${visibleDone}/${visibleItems.length} actividades de hoy por categoría.`
         : "No hay actividades programadas para hoy.";
@@ -1173,7 +1321,7 @@ function render(){
   }
 
   if(!visibleItems.length){
-    cont.innerHTML = `<div class="empty">Nada programado en esta vista.</div>`;
+    cont.innerHTML = `<div class="empty">${viewMode === "historico" ? "No hay historial en esta vista." : "Nada programado en esta vista."}</div>`;
     return;
   }
 
@@ -1184,13 +1332,18 @@ function render(){
     wrapper.className = "category-group";
 
     if(grupo.categoria !== "__sin_categoria__"){
-      const catId = cleanId("vista-" + selectedTiempo + "-" + grupo.categoria);
+      const catId = cleanId("vista-" + viewMode + "-" + selectedTiempo + "-" + grupo.categoria);
 
       if(openCategories[catId] === undefined){
         openCategories[catId] = false;
       }
 
-      const doneCat = grupo.items.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
+      const doneCat = viewMode === "historico"
+        ? grupo.items.reduce((sum,it)=> sum + Number(it.usadosRegistrados || 0), 0)
+        : grupo.items.filter(it => getCheck(it.categoria, it.tiempo, it.nombre)).length;
+      const totalCat = viewMode === "historico"
+        ? grupo.items.reduce((sum,it)=> sum + Number(it.diasCicloTotal || 0), 0) || grupo.items.length
+        : grupo.items.length;
 
       const header = document.createElement("div");
       header.className = "category-header";
@@ -1202,7 +1355,7 @@ function render(){
           <span>${escapeHtml(getCategoriaLabel(grupo.categoria))}</span>
         </div>
         <div class="category-actions">
-          <span class="category-count">${doneCat}/${grupo.items.length}</span>
+          <span class="category-count">${doneCat}/${totalCat}</span>
         </div>
       `;
       wrapper.appendChild(header);
