@@ -708,13 +708,30 @@ async function cargar(){
 }
 
 function getDiasRestantes(cfg){
+  // Días futuros que faltan después de hoy.
+  // Ejemplo: tratamiento 20 días que inició el 11/04, el 25/04 faltan 5 días: 26,27,28,29,30.
   if(!cfg || !cfg.inicio || !cfg.diasCiclo) return null;
+  const inicio = new Date(cfg.inicio + "T12:00:00");
+  const hoy = new Date(todayKey() + "T12:00:00");
+  const total = Number(cfg.diasCiclo);
+  if(!total) return null;
+
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + total - 1);
+
+  const restantes = Math.round((fin - hoy) / 86400000);
+  return Math.max(0, restantes);
+}
+
+function cicloActivoHoy(cfg){
+  if(!cfg || !cfg.inicio || !cfg.diasCiclo) return true;
   const inicio = new Date(cfg.inicio + "T12:00:00");
   const hoy = new Date(todayKey() + "T12:00:00");
   const diff = Math.round((hoy - inicio) / 86400000);
   const total = Number(cfg.diasCiclo);
-  if(!total) return null;
-  return Math.max(0, total - diff);
+  if(!total) return true;
+
+  return diff >= 0 && diff < total;
 }
 
 function isActiveCfg(cfg){
@@ -732,7 +749,7 @@ function isActiveCfg(cfg){
 
   if(cfg.inicio){
     if(cfg.inicio > todayKey()) return false;
-    if(cfg.diasCiclo && getDiasRestantes(cfg) <= 0) return false;
+    if(cfg.diasCiclo && !cicloActivoHoy(cfg)) return false;
   }
 
   return true;
@@ -900,6 +917,20 @@ function construirHistorialCompleto(itemActual, historialServidor){
   return (historialServidor || []).slice().sort((a,b)=> String(b.fecha || "").localeCompare(String(a.fecha || "")));
 }
 
+function calcularDiasRestantesItem(item){
+  if(!item || !item.inicio || !item.diasCicloTotal) return 0;
+
+  const inicio = new Date(item.inicio + "T12:00:00");
+  const hoy = new Date(todayKey() + "T12:00:00");
+  const total = Number(item.diasCicloTotal);
+  if(!total) return 0;
+
+  const fin = new Date(inicio);
+  fin.setDate(fin.getDate() + total - 1);
+
+  const restantes = Math.round((fin - hoy) / 86400000);
+  return Math.max(0, restantes);
+}
 
 function cerrarModal(){
   document.getElementById("history-modal").style.display = "none";
@@ -930,7 +961,7 @@ async function abrirHistorial(categoria, tiempo, nombre){
     const historial = construirHistorialCompleto(itemActual, historialServidor);
     const usados = historial.filter(h=>h.completado).length;
     const duracionTotal = itemActual && itemActual.diasCicloTotal ? Number(itemActual.diasCicloTotal) : historial.length;
-    const pendientes = Math.max(0, duracionTotal - usados);
+    const pendientes = itemActual && itemActual.diasCicloTotal ? calcularDiasRestantesItem(itemActual) : 0;
     const pct = duracionTotal ? Math.round(usados / duracionTotal * 100) : 0;
 
     let html = `
@@ -941,7 +972,7 @@ async function abrirHistorial(categoria, tiempo, nombre){
         </div>
         <div class="stat-card">
           <div class="stat-value">${pendientes}</div>
-          <div class="stat-label">Pendientes</div>
+          <div class="stat-label">Días restantes</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${pct}%</div>
@@ -983,6 +1014,7 @@ async function abrirResumenCategoria(categoria){
 
     let totalEsperado = 0;
     let totalHecho = 0;
+    let totalRestantes = 0;
     let productosHtml = "";
 
     for(const it of itemsCategoria){
@@ -996,11 +1028,12 @@ async function abrirResumenCategoria(categoria){
       const historial = construirHistorialCompleto(it, historialServidor);
       const usados = historial.filter(h=>h.completado).length;
       const esperado = it.diasCicloTotal ? Number(it.diasCicloTotal) : historial.length;
-      const pendientes = Math.max(0, esperado - usados);
+      const pendientes = it.diasCicloTotal ? calcularDiasRestantesItem(it) : 0;
       const pct = esperado ? Math.round(usados / esperado * 100) : 0;
 
       totalEsperado += esperado;
       totalHecho += usados;
+      totalRestantes += pendientes;
 
       productosHtml += `
         <div class="product-summary-row">
@@ -1009,13 +1042,13 @@ async function abrirResumenCategoria(categoria){
             <span>${pct}%</span>
           </div>
           <div class="product-summary-meta">
-            ${usados}/${esperado} completados · ${pendientes} pendientes · ${TIME_LABEL[it.tiempo]}
+            ${usados}/${esperado} completados · ${pendientes} días restantes · ${TIME_LABEL[it.tiempo]}
           </div>
         </div>
       `;
     }
 
-    const totalPendiente = Math.max(0, totalEsperado - totalHecho);
+    const totalPendiente = totalRestantes;
     const pctGeneral = totalEsperado ? Math.round(totalHecho / totalEsperado * 100) : 0;
 
     const html = `
@@ -1026,7 +1059,7 @@ async function abrirResumenCategoria(categoria){
         </div>
         <div class="stat-card">
           <div class="stat-value">${totalPendiente}</div>
-          <div class="stat-label">Pendientes</div>
+          <div class="stat-label">Días restantes</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">${pctGeneral}%</div>
