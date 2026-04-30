@@ -989,7 +989,7 @@ function renderItem(it){
       </div>
     </div>
     <button class="check" aria-label="Completar"
-      onclick="toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>
+      onclick="event.stopPropagation(); toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>
   `;
   return div;
 }
@@ -1113,7 +1113,11 @@ async function toggleCheck(categoria, tiempo, nombre){
       completado: !current
     });
 
+    // Releer checks después de guardar para confirmar que quedó sincronizado
+    const checksRes = await postSheets("getChecks", { fecha: todayKey() });
+    checksObj = checksRes.checks || checksObj;
     setStatus("Sincronizado", "ok");
+    render();
   }catch(e){
     console.error(e);
     setStatus("Error guardando", "err");
