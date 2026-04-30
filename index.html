@@ -603,23 +603,21 @@ h1{
 <div class="app">
   <div class="top">
     <div>
-      <h1>Hoy</h1>
+      <h1 id="main-title">Hoy</h1>
       <div class="date" id="date"></div>
       <div class="status"><span class="dot" id="status-dot"></span><span id="status">Cargando...</span></div>
     </div>
     <div class="top-actions">
       <div class="view-mode" aria-label="Modo de vista">
         <button id="btn-hoy" type="button" onclick="setViewMode('hoy')">Hoy</button>
-        <button id="btn-ritmo" type="button" onclick="setViewMode('ritmo')">Cómo voy</button>
+        <button id="btn-ritmo" type="button" onclick="setViewMode('ritmo')">Mi ritmo</button>
       </div>
       <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina">
         <option value="todo">Todo</option>
         <option value="manana">Mañana</option>
         <option value="tarde">Tarde</option>
         <option value="noche">Noche</option>
-      </select>
-      <button class="small-btn" onclick="cargar()">Actualizar</button>
-    </div>
+      </select>    </div>
   </div>
 
   <div class="error-box" id="error-box"></div>
@@ -1288,13 +1286,13 @@ function getRitmoMensaje(pct){
   if(pct >= 50){
     return "Vas agarrando ritmo. Ya hay avance, ahora toca sostenerlo.";
   }
-  return "Aún no agarras ritmo. Empieza simple, lo importante es moverte.";
+  return "Vas agarrando ritmo. Empieza simple, lo importante es moverte hoy.";
 }
 
 function getRitmoEstado(pct){
   if(pct >= 80) return "Traes muy buen ritmo";
   if(pct >= 50) return "Vas agarrando ritmo";
-  return "Aún no agarras ritmo";
+  return "Vas agarrando ritmo";
 }
 
 function setRitmoPeriodo(periodo){
@@ -1376,6 +1374,15 @@ function renderRitmoReport(cont){
       </div>
     </div>
 
+    <div class="ritmo-card">
+      <div class="ritmo-card-title">Producto a reforzar</div>
+      ${r.peorProducto ? `
+        <div class="ritmo-insight">
+          ${escapeHtml(r.peorProducto.nombre)} es el que más oportunidades tiene: ${r.peorProducto.fallas} pendiente${r.peorProducto.fallas === 1 ? "" : "s"} en este periodo.
+        </div>
+      ` : `<div class="ritmo-empty">Todavía no hay suficiente información para detectar un producto a reforzar.</div>`}
+    </div>
+
     <button class="ritmo-detail-btn" onclick="document.getElementById('ritmo-detail').classList.toggle('open')">Ver detalle de productos</button>
 
     <div class="ritmo-detail" id="ritmo-detail">
@@ -1411,6 +1418,7 @@ function getProgressMood(pct){
 }
 
 function render(){
+  document.getElementById("main-title").textContent = viewMode === "ritmo" ? "Mi ritmo" : "Hoy";
   document.getElementById("date").textContent = viewMode === "ritmo" ? "¿Qué ritmo traes?" : localDateText();
   syncViewModeUI();
 
@@ -1427,9 +1435,9 @@ function render(){
   if(viewMode === "ritmo"){
     const r = ritmoReport;
     const pct = r && r.esperados ? Number(r.pct || 0) : 0;
-    document.getElementById("summary-title").textContent = "Ritmo";
+    document.getElementById("summary-title").textContent = "Mi ritmo";
     document.getElementById("pct").textContent = r && r.esperados ? pct + "%" : "—";
-    document.getElementById("ritmo-msg").textContent = r && r.esperados ? getRitmoMensaje(pct) : "Todavía no hay datos suficientes para leer tu ritmo.";
+    document.getElementById("ritmo-msg").textContent = r && r.esperados ? getRitmoMensaje(pct) : "Vas creando tu ritmo. Registra algunas acciones para empezar a ver tu avance.";
     document.getElementById("fill").style.width = r && r.esperados ? pct + "%" : "0%";
     document.getElementById("done-count").textContent = r && r.esperados ? `${r.usados}/${r.esperados} acciones` : "Sin datos";
     document.getElementById("pending-count").textContent = r && r.esperados ? `${r.pendientes} por reforzar` : "";
