@@ -2117,7 +2117,18 @@ function abrirEditarProducto(categoria, tiempo, nombre){
 function resetAddModal(){
   editingItem = null;
   restartingItem = null;
-  ...
+
+  document.querySelector("#add-modal .modal-title").textContent = "Agregar producto";
+  document.querySelector("#add-modal .modal-subtitle").textContent = "Crea un nuevo producto para tu rutina";
+
+  document.getElementById("save-product-btn").textContent = "Guardar producto";
+  document.getElementById("delete-product-btn").style.display = "none";
+
+  document.getElementById("p-nombre").value = "";
+  document.getElementById("p-inicio").value = "";
+  document.getElementById("p-duracion").value = "";
+  document.getElementById("p-nota").value = "";
+
 }
 async function quitarProductoDesdeModal(){
   if(!editingItem) return;
@@ -2149,29 +2160,26 @@ async function guardarProducto(){
     };
 
     if(restartingItem){
-  await postSheets("reiniciarProducto", {
-    rowNumber: restartingItem.rowNumber,
-    inicio: data.inicio,
-    duracion: data.duracion,
-    horario: data.horario,
-    dias: data.dias
-  });
-  restartingItem = null;
-}else if(editingItem){
-  await postSheets("updateProducto", {
-    original: editingItem,
-    nuevo: data
-  });
-}else{
-  await postSheets("addProducto", data);
-}
-}else{
-  await postSheets("addProducto", data);
-}
+      await postSheets("reiniciarProducto", {
+        rowNumber: restartingItem.rowNumber,
+        inicio: data.inicio,
+        duracion: data.duracion,
+        horario: data.horario,
+        dias: data.dias
+      });
+      restartingItem = null;
+    }else if(editingItem){
+      await postSheets("updateProducto", {
+        original: editingItem,
+        nuevo: data
+      });
+    }else{
+      await postSheets("addProducto", data);
+    }
 
     alert("Producto guardado");
     closeAddModal();
-    cargar(); // recarga la app
+    cargar();
 
   }catch(e){
     alert("Error: " + e.message);
