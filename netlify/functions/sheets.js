@@ -594,7 +594,53 @@ exports.handler = async (event) => {
         body: JSON.stringify({ historial }),
       };
     }
+if (action === "addProducto") {
+  const {
+    nombre,
+    categoria,
+    frecuencia,
+    horario,
+    dias,
+    inicio,
+    duracion,
+    nota,
+    activo
+  } = data || {};
 
+  if (!nombre) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: "Nombre es obligatorio" }),
+    };
+  }
+
+  const values = [[
+    nombre,
+    categoria || "",
+    frecuencia || "",
+    horario || "",
+    dias || "todos",
+    inicio || "",
+    duracion || "",
+    nota || "",
+    activo || "si"
+  ]];
+
+  await sheets.spreadsheets.values.append({
+    spreadsheetId: SHEET_ID,
+    range: "plan!A:I",
+    valueInputOption: "RAW",
+    insertDataOption: "INSERT_ROWS",
+    requestBody: { values },
+  });
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ ok: true }),
+  };
+}
     if (action === "saveCheck") {
       const { fecha, categoria, tiempo, nombre, completado } = data;
 
