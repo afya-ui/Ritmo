@@ -646,6 +646,70 @@ if (action === "inactivarProducto") {
     body: JSON.stringify({ ok: true }),
   };
 }
+if (action === "updateProducto") {
+  const { original, nuevo } = data || {};
+
+  if (!original || !nuevo || !original.nombre) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: "Faltan datos para actualizar" }),
+    };
+  }
+
+  const rows = await readSheet(sheets, "plan!A2:I");
+  let rowNumberToUpdate = null;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const [n, c, frecuencia, horario] = row;
+
+    const cat = mapCategoria(c);
+    const tiempos = horarioToTiempos(horario, frecuencia);
+
+    if (
+      sameKey(n, original.nombre) &&
+      sameKey(cat, original.categoria) &&
+      tiempos.includes(original.tiempo)
+    ) {
+      rowNumberToUpdate = i + 2;
+      break;
+    }
+  }
+
+  if (!rowNumberToUpdate) {
+    return {
+      statusCode: 404,
+      headers,
+      body: JSON.stringify({ error: "No encontré el producto para actualizar" }),
+    };
+  }
+
+  const values = [[
+    nuevo.nombre || "",
+    nuevo.categoria || "",
+    nuevo.frecuencia || "",
+    nuevo.horario || "",
+    nuevo.dias || "todos",
+    nuevo.inicio || "",
+    nuevo.duracion || "",
+    nuevo.nota || "",
+    "si"
+  ]];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SHEET_ID,
+    range: `plan!A${rowNumberToUpdate}:I${rowNumberToUpdate}`,
+    valueInputOption: "RAW",
+    requestBody: { values },
+  });
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ ok: true }),
+  };
+}
 if (action === "addProducto") {
   const {
     nombre,
