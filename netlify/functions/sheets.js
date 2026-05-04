@@ -499,7 +499,90 @@ exports.handler = async (event) => {
   try {
     const sheets = await getSheets();
     const { action, data } = JSON.parse(event.body || "{}");
+if (action === "getProductosTerminados") {
+  const rows = await readSheet(sheets, "plan!A2:I");
+  const today = keyFromDate(new Date());
+  const terminados = [];
 
+  for (let i = 0; i < rows.length; i++) {
+    const [
+      nombre,
+      categoria,
+      frecuencia,
+      horario,
+      dias,
+      inicio,
+      duracion,
+      nota,
+      activo
+    ] = rows[i];
+
+    if (!nombre) continue;
+    if (["no", "false", "0", "inactivo"].includes(normalize(activo))) continue;
+    if (!inicio || !duracion) continue;
+
+    const inicioKey = parseDateKey(inicio);
+    const total = Number(duracion);
+    if (!total) continue;
+
+    const finKey = addDaysKey(inicioKey, total - 1);
+
+    if (today > finKey) {
+      terminados.push({
+        rowNumber: i + 2,
+        nombre,
+        categoria: mapCategoria(categoria),
+        frecuencia: frecuencia || "",
+        horario: horario || "",
+        dias: dias || "todos",
+        inicio: inicioKey,
+        duracion: duracion || "",
+        nota: nota || "",
+        fin: finKey
+      });
+    }
+  }
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ terminados }),
+  };
+}
+
+if (action === "reiniciarProducto") {
+  const { rowNumber, inicio, duracion, horario, dias } = data || {};
+
+  if (!rowNumber) {
+    return {
+      statusCode: 400,
+      headers,
+      body: JSON.stringify({ error: "Falta fila del producto" }),
+    };
+  }
+
+  const row = Number(rowNumber);
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: SHEET_ID,
+    requestBody: {
+      valueInputOption: "RAW",
+      data: [
+        { range: `plan!D${row}:D${row}`, values: [[horario || "mañana"]] },
+        { range: `plan!E${row}:E${row}`, values: [[dias || "todos"]] },
+        { range: `plan!F${row}:F${row}`, values: [[inicio || keyFromDate(new Date())]] },
+        { range: `plan!G${row}:G${row}`, values: [[duracion || ""]] },
+        { range: `plan!I${row}:I${row}`, values: [["si"]] },
+      ],
+    },
+  });
+
+  return {
+    statusCode: 200,
+    headers,
+    body: JSON.stringify({ ok: true }),
+  };
+}
     if (action === "getPlan") {
       const rows = await readSheet(sheets, "plan!A2:I");
       const plan = buildPlan(rows);
