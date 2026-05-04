@@ -1007,12 +1007,8 @@ async function cargarClima(){
     document.getElementById("date-line").textContent = localDateText();
   }
 }
-document.getElementById("date-line").textContent =
-  `${fecha} · ${temp}°C ${weatherIcon(code)}`;
-  }catch(e){
-    line.textContent = "San José del Cabo";
-  }
-}
+
+function initOpenSections(){
 function initOpenSections(){
   // Siempre iniciar categorías colapsadas
   openCategories = {};
