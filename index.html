@@ -724,6 +724,7 @@ h1{
       <div class="view-mode" aria-label="Modo de vista">
         <button id="btn-hoy" type="button" onclick="setViewMode('hoy')">Hoy</button>
         <button id="btn-ritmo" type="button" onclick="setViewMode('ritmo')">Mi ritmo</button>
+        <button id="btn-add" type="button" onclick="openAddModal()">Agregar</button>
       </div>
       <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina">
         <option value="todo">Todo</option>
@@ -1814,6 +1815,57 @@ async function toggleCheck(categoria, tiempo, nombre){
 
 initOpenSections();
 cargar();
+  function openAddModal(){
+  document.getElementById("add-modal").style.display = "flex";
+}
+
+function closeAddModal(){
+  document.getElementById("add-modal").style.display = "none";
+}
+
+async function guardarProducto(){
+  try{
+    const data = {
+      nombre: document.getElementById("p-nombre").value,
+      categoria: document.getElementById("p-categoria").value,
+      frecuencia: document.getElementById("p-frecuencia").value,
+      horario: document.getElementById("p-horario").value,
+      dias: document.getElementById("p-dias").value,
+      inicio: document.getElementById("p-inicio").value,
+      duracion: document.getElementById("p-duracion").value,
+      nota: document.getElementById("p-nota").value,
+      activo: "si"
+    };
+
+    await postSheets("addProducto", data);
+
+    alert("Producto guardado");
+    closeAddModal();
+    cargar(); // recarga la app
+
+  }catch(e){
+    alert("Error: " + e.message);
+  }
+}
 </script>
+  <div class="modal" id="add-modal">
+  <div class="modal-card">
+    <div class="modal-top">
+      <div class="modal-title">Agregar producto</div>
+      <button class="modal-close" onclick="closeAddModal()">×</button>
+    </div>
+
+    <input id="p-nombre" placeholder="Nombre" />
+    <input id="p-categoria" placeholder="Categoría" />
+    <input id="p-frecuencia" placeholder="Frecuencia (ej: 24h)" />
+    <input id="p-horario" placeholder="Horario (mañana,tarde,noche)" />
+    <input id="p-dias" placeholder="Días (todos o lunes, martes...)" />
+    <input id="p-inicio" placeholder="Inicio (YYYY-MM-DD)" />
+    <input id="p-duracion" placeholder="Duración días" />
+    <input id="p-nota" placeholder="Nota" />
+
+    <button onclick="guardarProducto()">Guardar</button>
+  </div>
+</div>
 </body>
 </html>
