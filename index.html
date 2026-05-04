@@ -1532,10 +1532,9 @@ function renderItem(it){
   const doneItem = getCheck(it.categoria, it.tiempo, it.nombre);
   const badge = it.diasRestantes !== null ? `<span class="badge">faltan ${it.diasRestantes}d</span>` : "";
   const nota = it.note ? `${escapeHtml(it.note)}` : "";
-  const horario = `<strong>${TIME_LABEL[it.tiempo] || it.tiempo}</strong>`;
-  const metaParts = [horario];
-  if(nota) metaParts.push(nota);
-  const meta = metaParts.join(" · ");
+  const metaParts = [];
+if(nota) metaParts.push(nota);
+const meta = metaParts.join(" · ");
   const icon = CAT_ICON[it.categoria] || "•";
 
   const div = document.createElement("div");
