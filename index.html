@@ -1548,8 +1548,13 @@ const meta = metaParts.join(" · ");
         <div class="item-meta">${meta}${badge}</div>
       </div>
     </div>
-    <button class="check" aria-label="Completar"
-      onclick="event.stopPropagation(); toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>
+    <div style="display:flex; gap:8px; align-items:center;">
+  <button class="small-btn"
+    onclick="event.stopPropagation(); inactivarProducto('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">Editar</button>
+
+  <button class="check" aria-label="Completar"
+    onclick="event.stopPropagation(); toggleCheck('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">✓</button>
+</div>
   `;
   return div;
 }
@@ -1946,7 +1951,26 @@ function render(){
 
   saveOpenCategories();
 }
+async function inactivarProducto(categoria, tiempo, nombre){
+  const ok = confirm(`¿Quieres inactivar "${nombre}"?\n\nNo se borrará de la base de datos, solo dejará de aparecer en la app.`);
+  if(!ok) return;
 
+  try{
+    await postSheets("inactivarProducto", {
+      categoria,
+      tiempo,
+      nombre
+    });
+
+    setStatus("Producto inactivado", "ok");
+    await cargar();
+
+  }catch(e){
+    console.error(e);
+    setStatus("Error inactivando", "err");
+    showError(e.message || String(e));
+  }
+}
 async function toggleCheck(categoria, tiempo, nombre){
   try{
     const current = getCheck(categoria, tiempo, nombre);
