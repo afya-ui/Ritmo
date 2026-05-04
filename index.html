@@ -868,7 +868,18 @@ h1{
       </div>
 
       <label>Días</label>
-      <input id="p-dias" value="todos" />
+      <select id="p-dias">
+  <option value="todos">Todos los días</option>
+  <option value="lunes,martes,miercoles,jueves,viernes">Lunes a viernes</option>
+  <option value="sabado,domingo">Fines de semana</option>
+  <option value="lunes">Lunes</option>
+  <option value="martes">Martes</option>
+  <option value="miercoles">Miércoles</option>
+  <option value="jueves">Jueves</option>
+  <option value="viernes">Viernes</option>
+  <option value="sabado">Sábado</option>
+  <option value="domingo">Domingo</option>
+</select>
 
       <label>Nota</label>
       <textarea id="p-nota" placeholder="Ej. Después del desayuno"></textarea>
