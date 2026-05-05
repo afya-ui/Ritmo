@@ -820,7 +820,8 @@ h1{
 
     <div class="add-form">
       <label>Nombre</label>
-      <input id="p-nombre" placeholder="Ej. Doxiciclina 100 mg" />
+      <input id="p-nombre" placeholder="Ej. Doxiciclina 100 mg" oninput="sugerirProducto(this.value)" />
+<div id="nombre-sugerencias" style="font-size:13px; color:#6d6d68; margin-top:4px;"></div>
 
       <div class="add-grid">
         <div>
@@ -1088,6 +1089,57 @@ function cleanId(s){
     .replace(/[^a-zA-Z0-9-_]/g,"");
 }
 
+function normalizarTexto(s){
+  return String(s || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .trim();
+}
+
+function obtenerNombresExistentes(){
+  const nombres = new Set();
+
+  Object.entries(planObj || {}).forEach(([categoria, tiempos])=>{
+    Object.values(tiempos || {}).forEach(productos=>{
+      Object.keys(productos || {}).forEach(nombre=>{
+        nombres.add(nombre);
+      });
+    });
+  });
+
+  return Array.from(nombres);
+}
+
+function sugerirProducto(valor){
+  const cont = document.getElementById("nombre-sugerencias");
+  if(!valor){
+    cont.innerHTML = "";
+    return;
+  }
+
+  const inputNorm = normalizarTexto(valor);
+  const existentes = obtenerNombresExistentes();
+
+  const match = existentes.find(n =>
+    normalizarTexto(n) === inputNorm
+  );
+
+  if(match){
+    cont.innerHTML = `
+      Ya existe: <strong>${match}</strong><br/>
+      <button class="small-btn" onclick="usarProductoExistente('${match}')">
+        Usar este producto
+      </button>
+    `;
+  } else {
+    cont.innerHTML = "";
+  }
+}
+
+function usarProductoExistente(nombre){
+  document.getElementById("p-nombre").value = nombre;
+  document.getElementById("nombre-sugerencias").innerHTML = "";
+}
 function toggleCategoria(id){
   openCategories[id] = !openCategories[id];
   saveOpenCategories();
@@ -2311,6 +2363,17 @@ async function guardarProducto(){
       nota: document.getElementById("p-nota").value,
       activo: "si"
     };
+    const existentes = obtenerNombresExistentes();
+const nombreInput = document.getElementById("p-nombre").value;
+
+const duplicado = existentes.find(n =>
+  normalizarTexto(n) === normalizarTexto(nombreInput)
+);
+
+if(duplicado && !editingItem && !restartingItem){
+  alert(`Este producto ya existe como "${duplicado}".\n\nUsa el existente en lugar de crear uno nuevo.`);
+  return;
+}
 
     if(restartingItem){
       await postSheets("reiniciarProducto", {
