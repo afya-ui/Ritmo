@@ -2120,7 +2120,62 @@ cargarClima();
 }
 
 function mostrarProductosExistentes(){
-  alert("Aquí vamos a mostrar productos existentes.\n\nSiguiente paso: construir lista desde la base de datos.");
+  closeAddMenu();
+
+  const cont = document.getElementById("app");
+  
+  const existentes = [...new Set(planData.map(p => p.nombre))];
+
+  let html = `
+    <div class="modal" style="display:flex;">
+      <div class="modal-card">
+        <div class="modal-top">
+          <div>
+            <div class="modal-title">Producto existente</div>
+            <div class="modal-subtitle">Selecciona uno</div>
+          </div>
+          <button class="modal-close" onclick="closeExistentes()">×</button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+  `;
+
+  existentes.forEach(nombre=>{
+    html += `
+      <button class="small-btn" style="padding:14px;"
+        onclick="seleccionarExistente('${nombre}')">
+        ${nombre}
+      </button>
+    `;
+  });
+
+  html += `
+        </div>
+      </div>
+    </div>
+  `;
+
+  const div = document.createElement("div");
+  div.id = "existentes-modal";
+  div.innerHTML = html;
+
+  document.body.appendChild(div);
+}
+function closeExistentes(){
+  const el = document.getElementById("existentes-modal");
+  if(el) el.remove();
+}
+
+function seleccionarExistente(nombre){
+  closeExistentes();
+
+  const item = planData.find(p => p.nombre === nombre);
+  if(!item) return;
+
+  document.getElementById("p-nombre").value = item.nombre;
+  document.getElementById("p-categoria").value = item.categoria;
+  document.getElementById("p-horario").value = item.tiempo;
+
+  openAddModal();
 }
 function closeAddModal(){
   document.getElementById("add-modal").style.display = "none";
