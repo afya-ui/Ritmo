@@ -2149,41 +2149,6 @@ function mostrarProductosExistentes(){
         <div class="modal-top">
           <div>
             <div class="modal-title">Producto existente</div>
-            <div class="modal-subtitle">Selecciona uno para activarlo</div>
-          </div>
-          <button class="modal-close" onclick="closeExistentes()">×</button>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
-  `;
-
-  existentes.forEach((p, i)=>{
-    window.__existentesTemp = existentes;
-    html += `
-      <button class="small-btn" style="padding:14px; text-align:left;"
-        onclick="seleccionarExistente(${i})">
-        ${escapeHtml(p.nombre)}
-      </button>
-    `;
-  });
-
-  html += `
-        </div>
-      </div>
-    </div>
-  `;
-
-  const div = document.createElement("div");
-  div.id = "existentes-modal";
-  div.innerHTML = html;
-  document.body.appendChild(div);
-}
-
-  let html = `
-    <div class="modal" style="display:flex;">
-      <div class="modal-card">
-        <div class="modal-top">
-          <div>
-            <div class="modal-title">Producto existente</div>
             <div class="modal-subtitle">Selecciona uno</div>
           </div>
           <button class="modal-close" onclick="closeExistentes()">×</button>
