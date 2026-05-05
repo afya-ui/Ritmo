@@ -2120,7 +2120,7 @@ cargarClima();
 }
 
 function mostrarProductosExistentes(){
-  const existentes = [];
+    const existentes = [];
 
   Object.entries(planObj || {}).forEach(([categoria, tiempos])=>{
     Object.entries(tiempos || {}).forEach(([tiempo, productos])=>{
@@ -2177,12 +2177,17 @@ function mostrarProductosExistentes(){
   let index = 0;
 
   categoriasOrdenadas.forEach(cat=>{
-    html += `
-      <div>
-        <div style="font-size:13px; font-weight:900; opacity:.55; margin:4px 0 8px; text-transform:uppercase; letter-spacing:.04em;">
-          ${escapeHtml(getCategoriaLabel(cat))}
-        </div>
-    `;
+    const catId = "exist-cat-" + cleanId(cat);
+
+html += `
+  <div>
+    <button class="small-btn" style="width:100%; padding:14px; text-align:left; font-weight:900; margin-bottom:8px;"
+      onclick="toggleExistenteCategoria('${catId}')">
+      ${escapeHtml(getCategoriaLabel(cat))} ›
+    </button>
+
+    <div id="${catId}" style="display:none;">
+`;
 
     agrupado[cat].forEach(p=>{
       window.__existentesTemp.push(p);
@@ -2240,6 +2245,12 @@ function seleccionarExistente(index){
   document.getElementById("delete-product-btn").style.display = "none";
 
   openAddModal();
+}
+  
+function toggleExistenteCategoria(id){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = el.style.display === "none" ? "block" : "none";
 }
 function closeAddModal(){
   document.getElementById("add-modal").style.display = "none";
