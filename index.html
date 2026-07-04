@@ -1035,6 +1035,7 @@ h1{
       <div class="view-mode" aria-label="Modo de vista">
         <button id="btn-hoy" type="button" onclick="setViewMode('hoy')">Hoy</button>
         <button id="btn-ritmo" type="button" onclick="setViewMode('ritmo')">Mi Ritmo</button>
+        <button id="btn-equipo" type="button" onclick="setViewMode('equipo')">Equipo</button>
         <button id="btn-add" type="button" onclick="openAddMenu()">+ Acción</button>
       </div>
       <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina" style="display:none;">
@@ -1190,6 +1191,7 @@ let todayItems = [];
 let viewMode = "hoy";
 let ritmoModo = "mes";
 let ritmoReport = null;
+let ritmoEquipoReport = null;
 let openSections = {}; // ya no se usa para mostrar secciones, se conserva por compatibilidad local
 let openCategories = {};
   let editingItem = null;
@@ -1264,17 +1266,20 @@ function setTimeFilter(){
 }
 
 function setViewMode(value){
-  viewMode = value === "ritmo" ? "ritmo" : "hoy";
+  viewMode = (value === "ritmo" || value === "equipo") ? value : "hoy";
   syncViewModeUI();
   if(viewMode === "ritmo") cargarRitmoReport();
+  if(viewMode === "equipo") cargarRitmoEquipo();
   render();
 }
 
 function syncViewModeUI(){
   const hoy = document.getElementById("btn-hoy");
   const ritmo = document.getElementById("btn-ritmo");
+  const equipo = document.getElementById("btn-equipo");
   if(hoy) hoy.classList.toggle("active", viewMode === "hoy");
   if(ritmo) ritmo.classList.toggle("active", viewMode === "ritmo");
+  if(equipo) equipo.classList.toggle("active", viewMode === "equipo");
 }
 
 
@@ -1908,6 +1913,17 @@ async function cargarRitmoReport(){
   }
 }
 
+async function cargarRitmoEquipo(){
+  try{
+    const res = await postSheets("getRitmoEquipo", { periodo: "mes_custom", valor: currentMonthValue() });
+    ritmoEquipoReport = res.report || null;
+    render();
+  }catch(e){
+    console.error(e);
+    showError(e.message || String(e));
+  }
+}
+
 function pctClass(pct){
   if(pct >= 80) return "";
   if(pct >= 50) return "mid";
@@ -2077,6 +2093,54 @@ function renderRitmoReport(cont){
   cont.innerHTML = html;
 }
 
+function rachaTexto(racha){
+  if(racha <= 0) return "Sin racha activa";
+  if(racha === 1) return "1 día completo seguido";
+  return `${racha} días completos seguidos`;
+}
+
+function renderRitmoEquipo(cont){
+  const r = ritmoEquipoReport;
+
+  if(!r){
+    cont.innerHTML = `<div class="ritmo-empty">Cargando el ritmo del equipo...</div>`;
+    return;
+  }
+
+  const miembros = r.miembros || [];
+  const yo = getUsuarioActual();
+
+  let html = `
+    <div class="ritmo-card">
+      <div class="ritmo-card-title">Ritmo del equipo · ${escapeHtml(r.periodoLabel || "este mes")}</div>
+      <div class="note">Cada quien contra sus propios compromisos: % cumplido este mes y días seguidos completando todo lo programado.</div>
+    </div>
+  `;
+
+  if(!miembros.length){
+    html += `<div class="ritmo-empty">Todavía no hay usuarios con datos este mes.</div>`;
+  }else{
+    miembros.forEach((m, idx) => {
+      const esYo = normalizarTexto(m.nombre) === normalizarTexto(yo);
+      html += `
+        <div class="item" style="${esYo ? "border-color:rgba(79,125,91,.45);" : ""}">
+          <div class="item-left" style="cursor:default;">
+            <div class="item-icon">${idx === 0 && m.pct > 0 ? "🏆" : (idx + 1)}</div>
+            <div class="item-text" style="width:100%;">
+              <div class="item-name">${escapeHtml(m.nombre)}${esYo ? " (tú)" : ""}</div>
+              <div class="item-meta">${escapeHtml(rachaTexto(m.racha))}${m.esperados ? ` · ${m.usados}/${m.esperados} completados` : ""}</div>
+              <div class="bar" style="margin-top:8px;"><div class="fill" style="width:${m.pct}%"></div></div>
+            </div>
+          </div>
+          <div style="font-weight:900; font-size:16px; flex:0 0 auto;">${m.pct}%</div>
+        </div>
+      `;
+    });
+  }
+
+  cont.innerHTML = html;
+}
+
 function getProgressMood(pct){
   if(pct >= 90) return "Listo";
   if(pct >= 70) return "Casi listo";
@@ -2165,7 +2229,7 @@ function abrirProductoExistente(){
   mostrarAccionesExistentes();
 }
 function render(){
-  document.getElementById("main-title").textContent = viewMode === "ritmo" ? "Mi Ritmo" : "Hoy";
+  document.getElementById("main-title").textContent = viewMode === "ritmo" ? "Mi Ritmo" : viewMode === "equipo" ? "Equipo" : "Hoy";
   if(!document.getElementById("date-line").textContent){
   document.getElementById("date-line").textContent = localDateText();
 }
@@ -2180,6 +2244,13 @@ function render(){
     if(summaryBox) summaryBox.style.display = "none";
     if(note) note.textContent = "";
     renderRitmoReport(cont);
+    return;
+  }
+
+  if(viewMode === "equipo"){
+    if(summaryBox) summaryBox.style.display = "none";
+    if(note) note.textContent = "";
+    renderRitmoEquipo(cont);
     return;
   }
 
