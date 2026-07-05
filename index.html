@@ -2059,11 +2059,17 @@ function renderRitmoReport(cont){
   const conDatos = acciones.filter(a => Number(a.esperados||0) > 0 && Number(a.usados||0) > 0);
   const mejor = conDatos.length ? conDatos.slice().sort((a,b)=>(b.pct||0)-(a.pct||0))[0] : null;
 
+  const mesTexto = periodLabel ? periodLabel.split(" ")[0] : "";
+  const mesCap = mesTexto ? mesTexto.charAt(0).toUpperCase() + mesTexto.slice(1) : "";
+
   html += `
     <div class="ritmo-card">
-      <div class="ritmo-insight">
-        ${escapeHtml(getRitmoEstado(r.pct || 0))}. ${escapeHtml(r.insight || "Tu ritmo te ayuda a entender si estás creando las condiciones para ver cambios.")}
+      <div class="summary-row">
+        <div class="summary-title">Mi Ritmo de ${escapeHtml(mesCap)}</div>
+        <div class="summary-pct">${r.pct || 0}%</div>
       </div>
+      <div class="ritmo-msg">${escapeHtml(getRitmoEstado(r.pct || 0))}. ${escapeHtml(r.insight || "Tu ritmo te ayuda a entender si estás creando las condiciones para ver cambios.")}</div>
+      <div class="bar"><div class="fill" style="width:${r.pct || 0}%"></div></div>
     </div>
 
     <div class="ritmo-card">
