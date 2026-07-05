@@ -2072,6 +2072,25 @@ function renderRitmoReport(cont){
       <div class="bar"><div class="fill" style="width:${r.pct || 0}%"></div></div>
     </div>
 
+    <div class="ritmo-mini-grid" style="grid-template-columns:1fr 1fr;">
+      <div class="ritmo-mini">
+        <div class="ritmo-mini-label">Más constante</div>
+        <div class="ritmo-mini-value">${escapeHtml(mejor ? mejor.nombre : "-")}</div>
+      </div>
+      <div class="ritmo-mini">
+        <div class="ritmo-mini-label">A reforzar</div>
+        <div class="ritmo-mini-value">${escapeHtml(r.peorProducto ? r.peorProducto.nombre : "-")}</div>
+      </div>
+      <div class="ritmo-mini">
+        <div class="ritmo-mini-label">Completados del mes</div>
+        <div class="ritmo-mini-value">${r.usados || 0}/${r.esperados || 0}</div>
+      </div>
+      <div class="ritmo-mini">
+        <div class="ritmo-mini-label">Racha activa</div>
+        <div class="ritmo-mini-value">${escapeHtml(rachaTexto(r.racha || 0))}</div>
+      </div>
+    </div>
+
     <div class="ritmo-card">
       <div class="ritmo-card-title">Tus acciones${periodLabel ? " · " + escapeHtml(periodLabel) : ""}</div>
       <div class="note" style="margin-bottom:6px;">Toca una acción para ver su detalle.</div>
@@ -2081,17 +2100,6 @@ function renderRitmoReport(cont){
           <div class="ritmo-value">${a.pct !== null && a.pct !== undefined ? a.pct + "%" : "—"} ›</div>
         </div>
       `).join("") : `<div class="ritmo-empty">Todavía no hay datos suficientes.</div>`}
-    </div>
-
-    <div class="ritmo-mini-grid">
-      <div class="ritmo-mini">
-        <div class="ritmo-mini-label">Más constante</div>
-        <div class="ritmo-mini-value">${escapeHtml(mejor ? mejor.nombre : "-")}</div>
-      </div>
-      <div class="ritmo-mini">
-        <div class="ritmo-mini-label">A reforzar</div>
-        <div class="ritmo-mini-value">${escapeHtml(r.peorProducto ? r.peorProducto.nombre : "-")}</div>
-      </div>
     </div>
 
   `;
