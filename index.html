@@ -43,7 +43,7 @@ body{
   width:100%;
   overflow-x:hidden;
   margin:0 auto;
-  padding:calc(18px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));
+  padding:calc(18px + env(safe-area-inset-top)) 16px calc(100px + env(safe-area-inset-bottom));
 }
 .top{
   display:flex;
@@ -474,6 +474,46 @@ h1{
   border-radius:999px;
   padding:3px;
   gap:3px;
+}
+.bottom-nav{
+  display:none;
+  position:fixed;
+  left:50%;
+  bottom:0;
+  transform:translateX(-50%);
+  width:calc(100% - 24px);
+  max-width:496px;
+  margin:0 auto 12px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:999px;
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+  justify-content:space-around;
+  align-items:center;
+  z-index:50;
+}
+.bottom-nav-btn{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:2px;
+  border:0;
+  background:transparent;
+  color:var(--muted);
+  padding:6px 4px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:750;
+  cursor:pointer;
+}
+.bottom-nav-icon{
+  width:20px;
+  height:20px;
+}
+.bottom-nav-btn.active{
+  background:var(--text);
+  color:#fff;
 }
 .view-mode button{
   border:0;
@@ -1032,16 +1072,9 @@ h1{
       <div class="status"><span class="dot" id="status-dot"></span><span id="status">Cargando...</span></div>
     </div>
     <div class="top-actions">
-      <div class="view-mode" aria-label="Modo de vista">
-        <button id="btn-hoy" type="button" onclick="setViewMode('hoy')">Hoy</button>
-        <button id="btn-ritmo" type="button" onclick="setViewMode('ritmo')">Mi Ritmo</button>
-        <button id="btn-equipo" type="button" onclick="setViewMode('equipo')">Equipo</button>
-        <button id="btn-add" type="button" onclick="openAddMenu()">+ Acción</button>
-      </div>
       <select id="time-filter" onchange="setTimeFilter(this.value)" aria-label="Ver rutina" style="display:none;">
         <option value="todo">Todo</option>
       </select>
-      <button class="logout-btn" type="button" onclick="cerrarSesion()">Salir</button>
     </div>
   </div>
 
@@ -1064,6 +1097,29 @@ h1{
   <div class="filter-note" id="filter-note"></div>
   <div class="categories-container" id="categories-container"></div>
  </div>
+
+<nav class="bottom-nav" aria-label="Navegación principal">
+  <button id="btn-hoy" class="bottom-nav-btn" type="button" onclick="setViewMode('hoy')">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span>Hoy</span>
+  </button>
+  <button id="btn-ritmo" class="bottom-nav-btn" type="button" onclick="setViewMode('ritmo')">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Mi ritmo</span>
+  </button>
+  <button id="btn-equipo" class="bottom-nav-btn" type="button" onclick="setViewMode('equipo')">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    <span>Equipo</span>
+  </button>
+  <button id="btn-add" class="bottom-nav-btn" type="button" onclick="openAddMenu()">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>Acción</span>
+  </button>
+  <button id="btn-salir" class="bottom-nav-btn" type="button" onclick="cerrarSesion()">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <span>Salir</span>
+  </button>
+</nav>
 
 <div class="modal" id="add-modal" onclick="closeModalOnBackdrop(event, 'add-modal', closeAddModal)">
   <div class="modal-card">
@@ -2123,11 +2179,16 @@ function renderRitmoEquipo(cont){
 
   const miembros = r.miembros || [];
   const yo = getUsuarioActual();
+  const promedio = miembros.length ? Math.round(miembros.reduce((s,m)=>s+(m.pct||0),0) / miembros.length) : 0;
 
   let html = `
     <div class="ritmo-card">
-      <div class="ritmo-card-title">Ritmo del equipo · ${escapeHtml(r.periodoLabel || "este mes")}</div>
-      <div class="note">Cada quien contra sus propios compromisos: % cumplido este mes y días seguidos completando todo lo programado.</div>
+      <div class="summary-row">
+        <div class="summary-title">Ritmo del equipo · ${escapeHtml(r.periodoLabel || "este mes")}</div>
+        <div class="summary-pct">${promedio}%</div>
+      </div>
+      <div class="ritmo-msg">Cada quien contra sus propios compromisos: % cumplido este mes y días seguidos completando todo lo programado.</div>
+      <div class="bar"><div class="fill" style="width:${promedio}%"></div></div>
     </div>
   `;
 
@@ -2500,6 +2561,7 @@ function cerrarSesion(){
   localStorage.removeItem("ritmoUsuarioV1");
   localStorage.removeItem("ritmoCacheV3");
   document.getElementById("app-root").style.display = "none";
+  document.querySelector(".bottom-nav").style.display = "none";
   document.getElementById("login-screen").style.display = "flex";
   document.getElementById("login-pin").value = "";
   cargarNombresLogin();
@@ -2509,6 +2571,7 @@ function iniciarApp(){
   viewMode = "hoy";
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("app-root").style.display = "block";
+  document.querySelector(".bottom-nav").style.display = "flex";
   initOpenSections();
   cargar();
   cargarClima();
