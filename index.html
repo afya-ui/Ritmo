@@ -482,7 +482,7 @@ h1{
   right:0;
   bottom:0;
   z-index:50;
-  padding:0 16px calc(10px + env(safe-area-inset-bottom));
+  padding:0 16px calc(4px + env(safe-area-inset-bottom));
   pointer-events:none;
 }
 .bottom-nav-inner{
@@ -492,7 +492,7 @@ h1{
   height:58px;
   max-height:58px;
   background:var(--card);
-  border:1px solid var(--border);
+  border:1px solid rgba(0,0,0,.06);
   border-radius:999px;
   display:flex;
   align-items:center;
@@ -501,6 +501,7 @@ h1{
   padding:0 6px;
   overflow:hidden;
   box-sizing:border-box;
+  box-shadow:0 4px 18px rgba(24,24,22,.10);
 }
 .bottom-nav-btn{
   -webkit-appearance:none;
@@ -994,23 +995,6 @@ h1{
 .modal-card{
   background:var(--bg);
 }
-.drag-handle{
-  width:38px;
-  height:38px;
-  flex:0 0 38px;
-  border:1px solid var(--border);
-  background:var(--card);
-  color:var(--muted);
-  border-radius:14px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:20px;
-  cursor:grab;
-  user-select:none;
-  touch-action:none;
-}
-.drag-handle:active{cursor:grabbing;}
 .item.dragging{opacity:.45; transform:scale(.99);}
 .item.drag-over{outline:2px solid rgba(79,125,91,.35);}
 .no-scroll{overflow:hidden !important;}
@@ -1943,7 +1927,6 @@ function renderItem(it){
   const metaParts = [];
 if(nota) metaParts.push(nota);
 const meta = metaParts.join(" · ");
-  const icon = "•";
 
   const div = document.createElement("div");
   div.className = "item" + (doneItem ? " done" : "");
@@ -1953,11 +1936,13 @@ const meta = metaParts.join(" · ");
   div.ondrop = (event) => handleDrop(event, it.rowNumber);
   div.ondragend = handleDragEnd;
   div.innerHTML = `
-    <div class="drag-handle" draggable="${it.rowNumber ? "true" : "false"}" title="Arrastra para ordenar"
+    <div class="item-left" draggable="${it.rowNumber ? "true" : "false"}"
       ondragstart="handleDragStart(event, '${escapeAttr(it.rowNumber)}')"
-      onclick="event.stopPropagation();" onpointerdown="startPointerDrag(event, '${escapeAttr(it.rowNumber)}')">☰</div>
-    <div class="item-left" onclick="abrirHistorial('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">
-      <div class="item-icon">${icon}</div>
+      onpointerdown="handleItemPointerDown(event, '${escapeAttr(it.rowNumber)}')"
+      onpointermove="handleItemPointerMoveMaybeCancel(event)"
+      onpointerup="handleItemPointerUpMaybeCancel(event)"
+      onpointercancel="handleItemPointerUpMaybeCancel(event)"
+      onclick="abrirHistorial('${escapeAttr(it.categoria)}','${escapeAttr(it.tiempo)}','${escapeAttr(it.nombre)}')">
       <div class="item-text">
         <div class="item-name">${escapeHtml(it.nombre)}</div>
         <div class="item-meta">${meta}${badge}</div>
@@ -2393,6 +2378,37 @@ function render(){
     cont.appendChild(renderItem(it));
   });
 }
+let longPressTimer = null;
+let longPressStart = null;
+
+function handleItemPointerDown(event, rowNumber){
+  if(!rowNumber) return;
+  if(event.pointerType === "mouse") return; // en desktop usamos el drag nativo (draggable + dragstart)
+  longPressStart = { x: event.clientX, y: event.clientY, rowNumber, event };
+  clearTimeout(longPressTimer);
+  longPressTimer = setTimeout(() => {
+    if(!longPressStart) return;
+    const pending = longPressStart;
+    longPressStart = null;
+    startPointerDrag(pending.event, pending.rowNumber);
+  }, 350);
+}
+
+function handleItemPointerMoveMaybeCancel(event){
+  if(!longPressStart) return;
+  const dx = Math.abs(event.clientX - longPressStart.x);
+  const dy = Math.abs(event.clientY - longPressStart.y);
+  if(dx > 8 || dy > 8){
+    clearTimeout(longPressTimer);
+    longPressStart = null;
+  }
+}
+
+function handleItemPointerUpMaybeCancel(){
+  clearTimeout(longPressTimer);
+  longPressStart = null;
+}
+
 function startPointerDrag(event, rowNumber){
   if(!rowNumber) return;
   // Para mouse usamos el drag nativo; para touch/pen usamos pointer events.
