@@ -479,21 +479,21 @@ h1{
   display:none;
   position:fixed;
   left:50%;
-  bottom:0;
+  bottom:12px;
   transform:translateX(-50%);
-  width:calc(100% - 24px);
-  max-width:496px;
-  margin:0 auto 12px;
+  width:auto;
+  margin:0;
   background:var(--card);
   border:1px solid var(--border);
   border-radius:999px;
-  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
-  justify-content:space-around;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  justify-content:center;
   align-items:center;
+  gap:2px;
   z-index:50;
 }
 .bottom-nav-btn{
-  flex:1;
+  flex:0 0 auto;
   display:flex;
   flex-direction:column;
   align-items:center;
@@ -501,15 +501,15 @@ h1{
   border:0;
   background:transparent;
   color:var(--muted);
-  padding:6px 4px;
+  padding:6px 12px;
   border-radius:999px;
   font-size:10px;
   font-weight:750;
   cursor:pointer;
 }
 .bottom-nav-icon{
-  width:20px;
-  height:20px;
+  width:18px;
+  height:18px;
 }
 .bottom-nav-btn.active{
   background:var(--text);
